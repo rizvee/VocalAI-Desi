@@ -1,0 +1,7 @@
+
+{
+  "name": "VocalAI Desi",
+  "description": "Generate real-time, AI-driven music with a Bengali and South Asian focus using textual prompts and MIDI control, powered by Google Gemini and Tone.js.",
+  "requestFramePermissions": [],
+  "prompt": "Create an interactive music generation app called VocalAI Desi. Users provide textual prompts (e.g., 'Energetic Bollywood dance track with dhol') and can use MIDI knobs to control the 'weight' or 'intensity' of up to 16 such prompts. The app sends these weighted prompts to the Google Gemini API to get a detailed musical description (tempo, instruments like sitar, tabla, dhol, harmonium, and simple melodic/rhythmic patterns in JSON format). This JSON is then used by Tone.js to synthesize the music in real-time in the browser. The UI should feature 16 'prompt controllers', each with a text input for the prompt, a rotary knob for its weight, and a display for its assigned MIDI CC. A main play/pause button controls the music. Visual feedback should include dynamic background gradients based on active prompt colors and weights, and knob halos reacting to audio levels. MIDI setup allows selecting an input device and 'learning' CCs for knobs."
+}
