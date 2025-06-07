@@ -24,7 +24,7 @@ import { ToastMessage } from './components/ToastMessage';
 import type { Prompt, PlaybackState, MusicDescription } from './types';
 
 // Ensure API_KEY is used as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: "AIzaSyAY88xufPi5r_wkRQCBWcW7HtvFEpjBRC4" });
 const model = 'gemini-2.5-flash-preview-04-17';
 
 const DEFAULT_PROMPTS: Array<Omit<Prompt, 'promptId' | 'weight' | 'cc'>> = [
@@ -72,13 +72,13 @@ class VocalAiDesi extends LitElement {
       opacity: 0.8;
     }
     #grid {
-      width: 85vmin;
-      height: 85vmin;
+      width: 85vmin; /* Keep for now, evaluate later */
+      height: 85vmin; /* Keep for now, evaluate later */
       max-width: 900px;
       max-height: 900px;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 2vmin;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px; /* Changed from 2vmin to fixed 16px */
       margin-top: 8vmin;
     }
     prompt-controller {
@@ -177,7 +177,7 @@ class VocalAiDesi extends LitElement {
 
   override async firstUpdated() {
     if (!Tone.supported) {
-      this.toastMessage?.show("Audio features disabled: Web Audio API not supported by your browser.");
+      this.toastMessage?.show({ message: "Audio features disabled: Web Audio API not supported by your browser." });
       console.error("VocalAI Desi: Web Audio API not supported. Audio functionality will be limited.");
     }
 
@@ -185,7 +185,7 @@ class VocalAiDesi extends LitElement {
       this.midiInputIds = ids;
       this.activeMidiInputId = this.midiDispatcher.activeMidiInputId;
       if (ids.length === 0) {
-        this.toastMessage?.show("MIDI controller access failed or is unavailable. MIDI control features will be limited.");
+        this.toastMessage?.show({ message: "MIDI controller access failed or is unavailable. MIDI control features will be limited." });
       }
     });
     this.requestUpdate();
@@ -207,7 +207,7 @@ class VocalAiDesi extends LitElement {
     if (this.audioComponentsInitialized) return true;
 
     if (!Tone.supported) {
-        this.toastMessage?.show("Web Audio API is not supported in this browser. Audio features are disabled.");
+        this.toastMessage?.show({ message: "Web Audio API is not supported in this browser. Audio features are disabled." });
         console.error("VocalAI Desi: Tone.js (Web Audio API) is not supported.");
         return false;
     }
@@ -228,7 +228,7 @@ class VocalAiDesi extends LitElement {
             console.error(`rawCtx.createGain type: ${typeof (rawCtx as any).createGain}`);
             console.error(`rawCtx.currentTime type: ${typeof (rawCtx as any).currentTime}`);
           }
-          this.toastMessage?.show("Audio system error: Invalid context state. Please try refreshing.");
+          this.toastMessage?.show({ message: "Audio system error: Invalid context state. Please try refreshing." });
           return false;
       }
 
@@ -267,23 +267,29 @@ class VocalAiDesi extends LitElement {
         console.error(error);
       }
       
-      let specificUserMessage = "Audio component setup failed.";
-      if (errorName === 'InvalidAccessError') {
-          specificUserMessage = "Audio access denied during setup. Please click play again or check browser/iframe permissions.";
+      let userMessage = "Audio component setup failed. Please try refreshing.";
+      if (errorName === 'NotAllowedError' || (errorMessageText && errorMessageText.toLowerCase().includes('user gesture'))) {
+        userMessage = "Audio Error: Browser requires interaction. Click Play or tap screen.";
+      } else if (errorName === 'InvalidStateError') {
+        userMessage = "Audio Error: Audio system is in an unexpected state. Try refreshing.";
+      } else if (errorName === 'InvalidAccessError') {
+        userMessage = "Audio Error: Audio access denied. Check browser or iframe permissions.";
       } else if (errorMessageText && errorMessageText !== '(No message)') {
         const lowerCaseMessage = errorMessageText.toLowerCase();
-        if (lowerCaseMessage.includes('user gesture')) {
-            specificUserMessage = "Audio needs a user interaction. Please click 'Play'.";
-        } else if (lowerCaseMessage.includes('permission')) {
-            specificUserMessage = "Audio permission denied. Check browser settings.";
-        } else if (lowerCaseMessage.includes('circular structure') || lowerCaseMessage.includes('converting circular structure')) {
-            specificUserMessage = "A complex audio system error occurred. Check console.";
+        if (lowerCaseMessage.includes('permission denied')) {
+            userMessage = "Audio Error: Permission denied. Check browser settings.";
+        } else if (lowerCaseMessage.includes('circular structure')) {
+            userMessage = "An unexpected audio error occurred. If refreshing doesn't help, please report the issue.";
         } else {
-            specificUserMessage = errorMessageText.substring(0,100); 
+            userMessage = `Audio Init Error: ${errorMessageText.substring(0, 80)}`;
         }
       }
       
-      this.toastMessage?.show(`Audio Init Error: ${specificUserMessage}`);
+      this.toastMessage?.show({
+        message: userMessage,
+        intent: 'danger',
+        icon: 'error',
+      });
       this.audioComponentsInitialized = false;
       return false;
     }
@@ -300,7 +306,7 @@ class VocalAiDesi extends LitElement {
     if (!this.audioComponentsInitialized) {
       const ready = await this.ensureAudioComponentsInitialized(); // This won't call Tone.start()
       if (!ready || !this.tonePlayer) {
-        this.toastMessage?.show("Audio system not active. Please click the play button first.");
+        this.toastMessage?.show({ message: "Audio system not active. Please click the play button first." });
         this.isGenerating = false; 
         if (this.playbackState === 'loading') this.playbackState = 'paused';
         return;
@@ -309,7 +315,7 @@ class VocalAiDesi extends LitElement {
     // tonePlayer should be initialized if audioComponentsInitialized is true
     if (!this.tonePlayer) { 
         console.error("VocalAI Desi: generateMusicDescription - tonePlayer is not initialized despite audioComponentsInitialized being true. This should not happen.");
-        this.toastMessage?.show("Critical audio player error. Please refresh.");
+        this.toastMessage?.show({ message: "Critical audio player error. Please refresh." });
         this.isGenerating = false;
         if (this.playbackState === 'loading') this.playbackState = 'paused';
         return;
@@ -317,7 +323,7 @@ class VocalAiDesi extends LitElement {
 
     const activePrompts = this.getActivePrompts();
     if (activePrompts.length === 0) {
-      this.toastMessage.show('Turn up a knob to add a musical element.');
+      this.toastMessage.show({ message: 'Turn up a knob to add a musical element.' });
       if (this.playbackState === 'playing' || this.playbackState === 'loading') {
         this.pause();
       }
@@ -363,8 +369,22 @@ The music should be inspired by: ${promptText}.`;
       if (match && match[2]) {
         jsonStr = match[2].trim();
       }
-      
-      const description = JSON.parse(jsonStr) as MusicDescription;
+      let description;
+      try {
+        description = JSON.parse(jsonStr) as MusicDescription;
+      } catch (parseError: any) {
+        console.error('VocalAI Desi: Failed to parse AI response:', parseError.message);
+        this.toastMessage?.show({
+          message: "AI Error: Unexpected response format from AI. Please try again.",
+          intent: 'danger',
+          icon: 'error',
+        });
+        // throw parseError; // Re-throw to be caught by the outer catch - No, handle here and exit.
+        if (this.playbackState === 'loading') {
+            this.playbackState = 'paused';
+        }
+        return; // Exit if parsing fails
+      }
       this.tonePlayer.updateMusic(description); 
       
       if (this.playbackState === 'loading') {
@@ -376,16 +396,22 @@ The music should be inspired by: ${promptText}.`;
       let errorName = 'Unknown Error';
       let errorMessageText = '(No message)';
       let errorStack = '(No stack trace)';
+      let userErrorMessage = 'AI Error: Failed to generate music description.';
+
       if (e instanceof Error) {
         errorName = e.name;
         errorMessageText = e.message || errorMessageText;
         errorStack = e.stack || errorStack;
       } else if (typeof e === 'string') {
         errorMessageText = e;
+      } else if (e && typeof e.message === 'string') { // Handle cases where e might be an object with a message
+        errorMessageText = e.message;
       }
+
       console.error(`Error Name: ${errorName}`);
       console.error(`Error Message: ${errorMessageText}`);
       console.error(`Error Stack: ${errorStack}`);
+      // Log the raw error object if it's not a standard Error instance
       if (typeof e === 'object' && e !== null && !(e instanceof Error)) {
         console.error("Raw error object (details below):");
         console.error(e);
@@ -394,23 +420,38 @@ The music should be inspired by: ${promptText}.`;
          console.error(e);
       }
       
-      let userErrorMessage = 'Failed to generate music.';
-      if (errorMessageText && errorMessageText !== '(No message)') {
+      if (errorMessageText) {
         const lowerCaseMessage = errorMessageText.toLowerCase();
-        if (lowerCaseMessage.includes('circular structure') || lowerCaseMessage.includes('converting circular structure')) {
-             userErrorMessage = "A complex error occurred. Please check console.";
+        if (lowerCaseMessage.includes('api key not valid')) {
+          userErrorMessage = 'AI Error: Invalid API Key. Please check the key.';
+        } else if (lowerCaseMessage.includes('quota')) {
+          userErrorMessage = 'AI Error: Quota exceeded. Please try again later.';
+        } else if (lowerCaseMessage.includes('text not available') || lowerCaseMessage.includes('no response')) {
+            userErrorMessage = 'AI Error: No response from AI. Please try again.';
+        } else if (lowerCaseMessage.includes('network error') || lowerCaseMessage.includes('failed to fetch')) {
+            userErrorMessage = 'AI Error: Network issue. Please check your connection and try again.';
+        } else if (errorName !== 'Unknown Error' && errorName !== 'Error') {
+            userErrorMessage = `AI Error: ${errorName}. ${errorMessageText.substring(0,100)}`;
         } else {
-          userErrorMessage = errorMessageText.substring(0,100);
+            userErrorMessage = `AI Error: ${errorMessageText.substring(0,100)}`;
         }
-      } else if (errorName !== 'Unknown Error') {
-        userErrorMessage = `${errorName}: Music generation failed.`;
       }
-      this.toastMessage.show(`Error: ${userErrorMessage}. Retrying might help.`);
+
+      this.toastMessage?.show({
+        message: userErrorMessage,
+        intent: 'danger',
+        icon: 'error',
+      });
+
       if (this.playbackState === 'loading') {
-         this.playbackState = this.tonePlayer?.isPlaying() ? 'playing' : 'paused';
+         this.playbackState = 'paused'; // Ensure playback state is reset
       }
     } finally {
       this.isGenerating = false;
+      // Ensure playbackState is reset if it was loading, regardless of success or failure within try/catch
+      if (this.playbackState === 'loading') {
+        this.playbackState = this.tonePlayer?.isPlaying() ? 'playing' : 'paused';
+      }
     }
   }, 500);
 
@@ -481,7 +522,7 @@ The music should be inspired by: ${promptText}.`;
         await Tone.start();
         console.log("VocalAI Desi: play() - Tone.start() attempt completed. New state:", Tone.context.state);
         if (Tone.context.state !== 'running') {
-            this.toastMessage?.show("Failed to start audio. Please click play again or check browser permissions.");
+            this.toastMessage?.show({ message: "Failed to start audio. Please click play again or check browser permissions." });
             this.playbackState = 'stopped';
             return;
         }
@@ -496,7 +537,18 @@ The music should be inspired by: ${promptText}.`;
       }
       console.error(`Error Name: ${errorName}`);
       console.error(`Error Message: ${errorMessageText}`);
-      this.toastMessage?.show(`Audio Start Error: ${errorMessageText}. Please try again or check permissions.`);
+      let userMessage = "Audio Start Failed: Could not enable audio. Please ensure your browser allows sound and try clicking Play again.";
+      if (errorName === 'NotAllowedError' || (errorMessageText && errorMessageText.toLowerCase().includes('user gesture'))) {
+        userMessage = "Audio Error: Browser requires interaction to start audio. Click Play or tap screen.";
+      } else if (errorMessageText && !errorMessageText.toLowerCase().includes('failed to start audio context')) {
+        // Provide a more specific message if available, otherwise keep the default.
+        userMessage = `Audio Start Failed: ${errorMessageText}. Please try again.`;
+      }
+      this.toastMessage?.show({
+        message: userMessage,
+        intent: 'danger',
+        icon: 'error',
+      });
       this.playbackState = 'stopped';
       return;
     }
@@ -509,13 +561,13 @@ The music should be inspired by: ${promptText}.`;
     }
     
     if (!this.tonePlayer.isReady() || this.getActivePrompts().length === 0) {
-        this.toastMessage.show('Generating initial soundscape...');
+        this.toastMessage.show({ message: 'Generating initial soundscape...' });
         this.playbackState = 'loading';
         await this.generateMusicDescription(); 
         
         if (!this.tonePlayer.isReady() && this.getActivePrompts().length === 0) {
             this.playbackState = 'paused';
-            this.toastMessage.show('Please activate a prompt by turning its knob up.');
+            this.toastMessage.show({ message: 'Please activate a prompt by turning its knob up.' });
             return;
         }
         if (!this.tonePlayer.isReady()){ // Could have failed during generateMusicDescription
@@ -543,7 +595,7 @@ The music should be inspired by: ${promptText}.`;
   private async handlePlayPause() {
     try {
       if (this.isGenerating && this.playbackState === 'loading') {
-        this.toastMessage.show('Music is currently generating...');
+        this.toastMessage.show({ message: 'Music is currently generating...' });
         return;
       }
 
@@ -589,7 +641,11 @@ The music should be inspired by: ${promptText}.`;
         }
 
         if (this.toastMessage) {
-            this.toastMessage.show(`Playback Error: ${userErrorMessage}`);
+            this.toastMessage.show({
+              message: `Playback Error: ${userErrorMessage}`,
+              intent: 'danger',
+              icon: 'error',
+            });
         }
         this.tonePlayer?.stop(); 
         this.playbackState = 'stopped'; 
@@ -603,7 +659,7 @@ The music should be inspired by: ${promptText}.`;
       this.midiInputIds = inputIds;
       this.activeMidiInputId = this.midiDispatcher.activeMidiInputId;
        if (inputIds.length === 0) {
-        this.toastMessage?.show("No MIDI devices detected after attempting access. Ensure MIDI is enabled in browser/iframe and connected.");
+        this.toastMessage?.show({ message: "No MIDI devices detected after attempting access. Ensure MIDI is enabled in browser/iframe and connected." });
       }
     }
   }

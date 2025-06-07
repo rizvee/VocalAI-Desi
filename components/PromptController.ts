@@ -100,6 +100,26 @@ export class PromptController extends LitElement {
         font-size: 1.8vmin;
       }
     }
+
+    @media only screen and (max-width: 480px) {
+      #text {
+        font-size: 2.2vmin; /* Increased from 1.8vmin for smaller screens */
+        max-height: 6vmin; /* Allow a bit more height if font is larger */
+      }
+      weight-knob {
+        width: 75%; /* Increased from 65% */
+        margin-bottom: 1vmin; /* Adjusted spacing */
+      }
+      #midi {
+        font-size: 2vmin; /* Increased from 1.8vmin */
+      }
+      .prompt {
+        padding-bottom: 1vmin; /* Adjusted spacing */
+      }
+      #text-container {
+        min-height: 6.5vmin; /* Adjusted for larger font */
+      }
+    }
   `;
 
   @property({ type: String }) promptId = '';
